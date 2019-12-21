@@ -45,10 +45,18 @@ import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 import org.apache.rocketmq.common.sysflag.TopicSysFlag;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
 
+/**
+ * 存储路由元信息
+ */
 public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    /**
+     * 在 rocketmq技术内幕书中，以两主两从进行了举例，我这里以两主三从举例，两主三从可以在主挂掉之后重新选举
+     * 存储在内存中的元数据都是使用的非线程安全的Map，我猜在实际赋值的时候会用到锁。
+     */
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
@@ -99,6 +107,19 @@ public class RouteInfoManager {
         return topicList.encode();
     }
 
+    /**
+     * 注册的这个方法，一顿猛虎操作，把几个元数据信息全写到内存里面去了。
+     * 使用了经典的读写锁设计
+     * @param clusterName
+     * @param brokerAddr
+     * @param brokerName
+     * @param brokerId
+     * @param haServerAddr
+     * @param topicConfigWrapper
+     * @param filterServerList
+     * @param channel
+     * @return
+     */
     public RegisterBrokerResult registerBroker(
         final String clusterName,
         final String brokerAddr,
@@ -111,8 +132,10 @@ public class RouteInfoManager {
         RegisterBrokerResult result = new RegisterBrokerResult();
         try {
             try {
+                // 不管三七二十一，先加锁。
                 this.lock.writeLock().lockInterruptibly();
 
+                // 这一块的代码和平时写的业务代码基本差不多。根据key取值，判断有没有，没有new一个，添加新值，再set回去。
                 Set<String> brokerNames = this.clusterAddrTable.get(clusterName);
                 if (null == brokerNames) {
                     brokerNames = new HashSet<String>();
@@ -122,12 +145,14 @@ public class RouteInfoManager {
 
                 boolean registerFirst = false;
 
+                // 维护 brokerData 信息
                 BrokerData brokerData = this.brokerAddrTable.get(brokerName);
                 if (null == brokerData) {
                     registerFirst = true;
                     brokerData = new BrokerData(clusterName, brokerName, new HashMap<Long, String>());
                     this.brokerAddrTable.put(brokerName, brokerData);
                 }
+                // 再维护 brokerData 内部的 addressMap 信息
                 Map<Long, String> brokerAddrsMap = brokerData.getBrokerAddrs();
                 //Switch slave to master: first remove <1, IP:PORT> in namesrv, then add <0, IP:PORT>
                 //The same IP:PORT must only have one record in brokerAddrTable
@@ -150,12 +175,14 @@ public class RouteInfoManager {
                             topicConfigWrapper.getTopicConfigTable();
                         if (tcTable != null) {
                             for (Map.Entry<String, TopicConfig> entry : tcTable.entrySet()) {
+                                // 处理 queueData
                                 this.createAndUpdateQueueData(brokerName, entry.getValue());
                             }
                         }
                     }
                 }
 
+                // 更新心跳信息
                 BrokerLiveInfo prevBrokerLiveInfo = this.brokerLiveTable.put(brokerAddr,
                     new BrokerLiveInfo(
                         System.currentTimeMillis(),
@@ -166,6 +193,7 @@ public class RouteInfoManager {
                     log.info("new broker registered, {} HAServer: {}", brokerAddr, haServerAddr);
                 }
 
+                // 这里处理过滤服务器列表
                 if (filterServerList != null) {
                     if (filterServerList.isEmpty()) {
                         this.filterServerTable.remove(brokerAddr);
@@ -185,6 +213,7 @@ public class RouteInfoManager {
                     }
                 }
             } finally {
+                // 无论如何，都要解锁。
                 this.lock.writeLock().unlock();
             }
         } catch (Exception e) {
@@ -214,6 +243,12 @@ public class RouteInfoManager {
         }
     }
 
+    /**
+     * 创建和更新queueData
+     *
+     * @param brokerName
+     * @param topicConfig
+     */
     private void createAndUpdateQueueData(final String brokerName, final TopicConfig topicConfig) {
         QueueData queueData = new QueueData();
         queueData.setBrokerName(brokerName);
@@ -426,12 +461,17 @@ public class RouteInfoManager {
         return null;
     }
 
+    /**
+     * 路由删除
+     * 在NamesrvController里被调用，每隔10秒执行一次
+     */
     public void scanNotActiveBroker() {
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
         while (it.hasNext()) {
             Entry<String, BrokerLiveInfo> next = it.next();
             long last = next.getValue().getLastUpdateTimestamp();
             if ((last + BROKER_CHANNEL_EXPIRED_TIME) < System.currentTimeMillis()) {
+                // 关闭网络连接
                 RemotingUtil.closeChannel(next.getValue().getChannel());
                 it.remove();
                 log.warn("The broker channel expired, {} {}ms", next.getKey(), BROKER_CHANNEL_EXPIRED_TIME);
@@ -440,6 +480,12 @@ public class RouteInfoManager {
         }
     }
 
+    /**
+     * 确认删除后还要清楚其他路由元数据信息
+     * 代码比较琐碎，有空再看
+     * @param remoteAddr
+     * @param channel
+     */
     public void onChannelDestroy(String remoteAddr, Channel channel) {
         String brokerAddrFound = null;
         if (channel != null) {
@@ -753,9 +799,17 @@ public class RouteInfoManager {
 }
 
 class BrokerLiveInfo {
+    /**
+     * 最后一次心跳更新时间
+     */
     private long lastUpdateTimestamp;
+
     private DataVersion dataVersion;
     private Channel channel;
+
+    /**
+     * 这个是master的地址
+     */
     private String haServerAddr;
 
     public BrokerLiveInfo(long lastUpdateTimestamp, DataVersion dataVersion, Channel channel,

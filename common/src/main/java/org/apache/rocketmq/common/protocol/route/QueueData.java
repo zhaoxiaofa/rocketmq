@@ -21,10 +21,29 @@
 package org.apache.rocketmq.common.protocol.route;
 
 public class QueueData implements Comparable<QueueData> {
+    /**
+     * broke名字-比如broke-a
+     */
     private String brokerName;
+
+    /**
+     * 读队列数量-一个broker为每一个topic默认创建4个读队列
+     */
     private int readQueueNums;
+
+    /**
+     * 写队列数量-一个broker为每一个topic默认创建4个写队列
+     */
     private int writeQueueNums;
+
+    /**
+     * 读写权限 @see PermName 实际开发中一般默认就行
+     */
     private int perm;
+
+    /**
+     * topic 同步标记 @see TopicSynFlag 好像也不会特意修改
+     */
     private int topicSynFlag;
 
     public int getReadQueueNums() {

@@ -79,6 +79,7 @@ public class NamesrvStartup {
             return null;
         }
 
+        // 构建了两个config，之后通过参数进行相关配置，看看里面相关的属性。
         final NamesrvConfig namesrvConfig = new NamesrvConfig();
         final NettyServerConfig nettyServerConfig = new NettyServerConfig();
         nettyServerConfig.setListenPort(9876);
@@ -143,6 +144,9 @@ public class NamesrvStartup {
             System.exit(-3);
         }
 
+        /**
+         * 钩子函数
+         */
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, new Callable<Void>() {
             @Override
             public Void call() throws Exception {

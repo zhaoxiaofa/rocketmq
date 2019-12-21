@@ -17,10 +17,27 @@
 package org.apache.rocketmq.remoting.netty;
 
 public class NettyServerConfig implements Cloneable {
+    /**
+     * netty监听端口
+     */
     private int listenPort = 8888;
+
+    /**
+     * 工作线程数
+     */
     private int serverWorkerThreads = 8;
+
+    /**
+     * public线程，类似于共用的线程池，当业务没有自己创建线程池时，就使用这个。
+     */
     private int serverCallbackExecutorThreads = 0;
+
+    /**
+     * 处理网络io的线程数，主要NameServer、Broker使用。
+     */
     private int serverSelectorThreads = 3;
+
+
     private int serverOnewaySemaphoreValue = 256;
     private int serverAsyncSemaphoreValue = 64;
     private int serverChannelMaxIdleTimeSeconds = 120;
@@ -30,6 +47,7 @@ public class NettyServerConfig implements Cloneable {
     private boolean serverPooledByteBufAllocatorEnable = true;
 
     /**
+     * TODO 是否启用 epoll io 模型，linux 内核相关的，目前看不懂
      * make make install
      *
      *

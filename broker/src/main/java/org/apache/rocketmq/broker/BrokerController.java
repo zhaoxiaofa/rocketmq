@@ -226,6 +226,11 @@ public class BrokerController {
         return queryThreadPoolQueue;
     }
 
+    /**
+     * 被 BrokerStartUp 调用
+     * @return
+     * @throws CloneNotSupportedException
+     */
     public boolean initialize() throws CloneNotSupportedException {
         boolean result = this.topicConfigManager.load();
 
@@ -858,19 +863,22 @@ public class BrokerController {
         }
 
 
-
+        // 先注册一次，下面再使用定时线程池发送心跳
         this.registerBrokerAll(true, false, true);
+
 
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
             public void run() {
                 try {
+                    // 注册、发送心跳
                     BrokerController.this.registerBrokerAll(true, false, brokerConfig.isForceRegister());
                 } catch (Throwable e) {
                     log.error("registerBrokerAll Exception", e);
                 }
             }
+            // brokerConfig.getRegisterNameServerPeriod() 默认30秒
         }, 1000 * 10, Math.max(10000, Math.min(brokerConfig.getRegisterNameServerPeriod(), 60000)), TimeUnit.MILLISECONDS);
 
         if (this.brokerStatsManager != null) {

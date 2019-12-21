@@ -169,6 +169,9 @@ public class KVConfigManager {
         return null;
     }
 
+    /**
+     * 每隔10秒打印kv配置
+     */
     public void printAllPeriodically() {
         try {
             this.lock.readLock().lockInterruptibly();

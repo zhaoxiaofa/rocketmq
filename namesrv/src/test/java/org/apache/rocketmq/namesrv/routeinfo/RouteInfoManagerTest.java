@@ -60,6 +60,9 @@ public class RouteInfoManagerTest {
         assertThat(topicInfo).isNotNull();
     }
 
+    /**
+     * TODO 记得 debug 一下
+     */
     @Test
     public void testRegisterBroker() {
         TopicConfigSerializeWrapper topicConfigSerializeWrapper = new TopicConfigSerializeWrapper();
