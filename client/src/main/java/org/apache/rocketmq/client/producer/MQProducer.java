@@ -38,7 +38,7 @@ public interface MQProducer extends MQAdmin {
     SendResult send(final Message msg, final long timeout) throws MQClientException,
         RemotingException, MQBrokerException, InterruptedException;
 
-    void send(final Message msg, final SendCallback sendCallback) throws MQClientException,
+    SendResult send(final Message msg, final SendCallback sendCallback) throws MQClientException,
         RemotingException, InterruptedException;
 
     void send(final Message msg, final SendCallback sendCallback, final long timeout)

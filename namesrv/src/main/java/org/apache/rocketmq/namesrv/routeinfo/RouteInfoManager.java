@@ -54,7 +54,7 @@ public class RouteInfoManager {
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
-     * 在 rocketmq技术内幕书中，以两主两从进行了举例，我这里以两主三从举例，两主三从可以在主挂掉之后重新选举
+     * 在 rocketmq技术内幕书中，以两主两从进行了举例，我这里以两主四从举例，两主四从可以在主挂掉之后重新选举
      * 存储在内存中的元数据都是使用的非线程安全的Map，我猜在实际赋值的时候会用到锁。
      */
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;

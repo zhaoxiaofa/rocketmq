@@ -1110,7 +1110,11 @@ public class BrokerController {
     }
 
 
-
+    /**
+     * 主从同步HA机制
+     * 同步的是元数据-每隔10秒
+     * @param role
+     */
     private void handleSlaveSynchronize(BrokerRole role) {
         if (role == BrokerRole.SLAVE) {
             if (null != slaveSyncFuture) {

@@ -223,6 +223,11 @@ public class MQClientInstance {
         return mqList;
     }
 
+    /**
+     * MQClientInstance启动
+     * 里面的逻辑很多
+     * @throws MQClientException
+     */
     public void start() throws MQClientException {
 
         synchronized (this) {
@@ -470,6 +475,9 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 向所有的
+     */
     public void sendHeartbeatToAllBrokerWithLock() {
         if (this.lockHeartbeat.tryLock()) {
             try {
