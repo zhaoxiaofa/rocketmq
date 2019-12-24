@@ -16,6 +16,7 @@
  */
 package org.apache.rocketmq.acl.plain;
 
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -25,6 +26,8 @@ import org.apache.rocketmq.acl.common.AclException;
 import org.apache.rocketmq.acl.common.AclUtils;
 import org.apache.rocketmq.acl.common.Permission;
 import org.apache.rocketmq.acl.common.SessionCredentials;
+import org.apache.rocketmq.common.AclConfig;
+import org.apache.rocketmq.common.PlainAccessConfig;
 import org.apache.rocketmq.common.protocol.RequestCode;
 import org.apache.rocketmq.common.protocol.header.GetConsumerListByGroupRequestHeader;
 import org.apache.rocketmq.common.protocol.header.UnregisterClientRequestHeader;
@@ -38,17 +41,17 @@ import static org.apache.rocketmq.acl.plain.PlainAccessResource.getRetryTopic;
 
 public class PlainAccessValidator implements AccessValidator {
 
-    private PlainPermissionLoader aclPlugEngine;
+    private PlainPermissionManager aclPlugEngine;
 
     public PlainAccessValidator() {
-        aclPlugEngine = new PlainPermissionLoader();
+        aclPlugEngine = new PlainPermissionManager();
     }
 
     @Override
     public AccessResource parse(RemotingCommand request, String remoteAddr) {
         PlainAccessResource accessResource = new PlainAccessResource();
         if (remoteAddr != null && remoteAddr.contains(":")) {
-            accessResource.setWhiteRemoteAddress(remoteAddr.split(":")[0]);
+            accessResource.setWhiteRemoteAddress(remoteAddr.substring(0, remoteAddr.lastIndexOf(':')));
         } else {
             accessResource.setWhiteRemoteAddress(remoteAddr);
         }
@@ -56,8 +59,8 @@ public class PlainAccessValidator implements AccessValidator {
         accessResource.setRequestCode(request.getCode());
 
         if (request.getExtFields() == null) {
-            //If request's extFields is null,then return accessResource directly(users can use whiteAddress pattern)
-            //The following logic codes depend on the request's extFields not to be null.
+            // If request's extFields is null,then return accessResource directly(users can use whiteAddress pattern)
+            // The following logic codes depend on the request's extFields not to be null.
             return accessResource;
         }
         accessResource.setAccessKey(request.getExtFields().get(SessionCredentials.ACCESS_KEY));
@@ -135,4 +138,25 @@ public class PlainAccessValidator implements AccessValidator {
         aclPlugEngine.validate((PlainAccessResource) accessResource);
     }
 
+    @Override
+    public boolean updateAccessConfig(PlainAccessConfig plainAccessConfig) {
+        return aclPlugEngine.updateAccessConfig(plainAccessConfig);
+    }
+
+    @Override
+    public boolean deleteAccessConfig(String accesskey) {
+        return aclPlugEngine.deleteAccessConfig(accesskey);
+    }
+
+    @Override public String getAclConfigVersion() {
+        return aclPlugEngine.getAclConfigDataVersion();
+    }
+
+    @Override public boolean updateGlobalWhiteAddrsConfig(List<String> globalWhiteAddrsList) {
+        return aclPlugEngine.updateGlobalWhiteAddrsConfig(globalWhiteAddrsList);
+    }
+
+    @Override public AclConfig getAllAclConfig() {
+        return aclPlugEngine.getAllAclConfig();
+    }
 }
