@@ -16,19 +16,15 @@
  */
 package org.apache.rocketmq.example.quickstart;
 
-import com.sun.jmx.snmp.tasks.ThreadService;
 import org.apache.rocketmq.client.exception.MQBrokerException;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
-import org.apache.rocketmq.client.producer.SendCallback;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
 import java.io.UnsupportedEncodingException;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class demonstrates how to send messages to brokers using provided {@link DefaultMQProducer}.
@@ -58,6 +54,7 @@ public class Producer {
          */
 
         producer.setNamesrvAddr("localhost:9876");
+        producer.setSendMsgTimeout(1000 * 60 * 30);
 
         producer.start();
 
